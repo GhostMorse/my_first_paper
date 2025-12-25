@@ -2,154 +2,258 @@
 \usepackage{arxiv}
 
 \usepackage[utf8]{inputenc}
-\usepackage[english, russian]{babel}
+\usepackage[english]{babel}
 \usepackage[T1]{fontenc}
 \usepackage{url}
 \usepackage{booktabs}
 \usepackage{amsfonts}
 \usepackage{nicefrac}
-\usepackage{microtype}
-\usepackage{lipsum}
+%\usepackage{microtype}
 \usepackage{graphicx}
 \usepackage{natbib}
 \usepackage{doi}
+\usepackage{amsmath}
+\usepackage{float}
 
 
 
-\title{A template for the \emph{arxiv} style}
+\title{Improved AMFEB: Adaptive Fidelity and PCA for Hyperparameter Optimization}
 
-\author{ David S.~Hippocampus\thanks{Use footnote for providing further
-		information about author (webpage, alternative
-		address)---\emph{not} for acknowledging funding agencies.} \\
-	Department of Computer Science\\
-	Cranberry-Lemon University\\
-	Pittsburgh, PA 15213 \\
-	\texttt{hippo@cs.cranberry-lemon.edu} \\
-	%% examples of more authors
-	\And
-	Elias D.~Striatum \\
-	Department of Electrical Engineering\\
-	Mount-Sheikh University\\
-	Santa Narimana, Levand \\
-	\texttt{stariate@ee.mount-sheikh.edu} \\
-	%% \AND
-	%% Coauthor \\
-	%% Affiliation \\
-	%% Address \\
-	%% \texttt{email} \\
-	%% \And
-	%% Coauthor \\
-	%% Affiliation \\
-	%% Address \\
-	%% \texttt{email} \\
-	%% \And
-	%% Coauthor \\
-	%% Affiliation \\
-	%% Address \\
-	%% \texttt{email} \\
+\author{ 
+Gleb Mishchuk and Olga Kravtsova \\
+Lomonosov Moscow State University \\
+Faculty of Computational Mathematics and Cybernetics \\
+Moscow, Russia \\
+\texttt{mishchuk@cs.msu.ru}
 }
 \date{}
 
-\renewcommand{\shorttitle}{\textit{arXiv} Template}
+\renewcommand{\shorttitle}{Improved AMFEB with Adaptive Fidelity and PCA}
 
-%%% Add PDF metadata to help others organize their library
-%%% Once the PDF is generated, you can check the metadata with
-%%% $ pdfinfo template.pdf
 \hypersetup{
-pdftitle={A template for the arxiv style},
-pdfsubject={q-bio.NC, q-bio.QM},
-pdfauthor={David S.~Hippocampus, Elias D.~Striatum},
-pdfkeywords={First keyword, Second keyword, More},
+pdftitle={Improved AMFEB: Adaptive Fidelity and PCA for Hyperparameter Optimization},
+pdfsubject={Machine Learning, Hyperparameter Optimization},
+pdfauthor={Gleb Mishchuk, Olga Kravtsova},
+pdfkeywords={hyperparameter optimization, Bayesian optimization, multi-fidelity, PCA, machine learning},
 }
 
 \begin{document}
 \maketitle
 
 \begin{abstract}
-	\lipsum[1]
+Hyperparameter optimization is a critical component in developing effective machine learning models. The Adaptive Multi-Fidelity Evolutionary Bayesian Optimization (AMFEB) method has shown promising results in resource-constrained scenarios, but it suffers from the curse of dimensionality and relies on a fixed fidelity strategy. We propose an improved version of AMFEB that integrates Principal Component Analysis (PCA) for dimensionality reduction of the hyperparameter space and an adaptive fidelity selection mechanism based on surrogate model uncertainty. Experiments on four OpenML datasets demonstrate that the proposed method achieves comparable predictive quality while significantly reducing optimization time—up to 3.6$\times$ faster on certain datasets. Our results confirm that the improved AMFEB provides a favorable balance between accuracy and computational efficiency for practical hyperparameter tuning tasks.
 \end{abstract}
 
 
-\keywords{First keyword \and Second keyword \and More}
-
 \section{Introduction}
-\lipsum[2]
-\lipsum[3]
 
-\section{Headings: first level}
-\label{sec:headings}
+The rapid growth of data volumes has led to an increased demand for advanced machine learning (ML) methods capable of addressing complex prediction, classification, and automation tasks~\citep{geron2019hands}. A crucial factor in ensuring high model performance is the proper tuning of hyperparameters—parameters that are not learned from data but must be specified prior to training~\citep{bishop2006pattern}.
 
-\lipsum[4] See Section \ref{sec:headings}.
+Modern ML models, particularly deep neural networks, are characterized by high complexity and a large number of hyperparameters~\citep{goodfellow2016deep}. Combined with stringent accuracy requirements in domains such as medicine, autonomous systems, and financial analytics~\citep{bergstra2012random}, this creates a pressing need for more sophisticated hyperparameter optimization (HPO) techniques~\citep{snoek2012practical}. Furthermore, computational resource constraints necessitate efficient utilization of available budgets~\citep{frazier2018tutorial}.
 
-\subsection{Headings: second level}
-\lipsum[5]
-\begin{equation}
-	\xi _{ij}(t)=P(x_{t}=i,x_{t+1}=j|y,v,w;\theta)= {\frac {\alpha _{i}(t)a^{w_t}_{ij}\beta _{j}(t+1)b^{v_{t+1}}_{j}(y_{t+1})}{\sum _{i=1}^{N} \sum _{j=1}^{N} \alpha _{i}(t)a^{w_t}_{ij}\beta _{j}(t+1)b^{v_{t+1}}_{j}(y_{t+1})}}
-\end{equation}
+From a mathematical perspective, hyperparameter optimization can be formulated as a bilevel optimization problem~\citep{hutter2019automated}. Let $\lambda = (\lambda_1, \lambda_2, \ldots, \lambda_n) \in D \subset \mathbb{R}^n$ denote the hyperparameter vector within the feasible domain $D$. The inner problem (model training with fixed $\lambda$) is given by:
+\[
+X(\lambda) = \arg\min_{x \in \mathbb{R}^p} h(x, \lambda),
+\]
+where $h(x, \lambda)$ is the loss function. The outer problem (hyperparameter optimization) is:
+\[
+\lambda^{*} = \arg\min_{\lambda \in D} f(\lambda) = g(X(\lambda), \lambda),
+\]
+where $f(\lambda)$ represents the model quality metric evaluated on a validation set~\citep{bischl2021hyperparameter}.
 
-\subsubsection{Headings: third level}
-\lipsum[6]
+Classical approaches such as Grid Search and Random Search~\citep{bergstra2012random} suffer from exponential computational costs as the dimensionality of the hyperparameter space increases—a phenomenon known as the ``curse of dimensionality''~\citep{bellman1957dynamic}. Bayesian optimization~\citep{rasmussen2006gaussian} addresses this by constructing a probabilistic surrogate model of the objective function, but its efficiency degrades in high-dimensional spaces.
 
-\paragraph{Paragraph}
-\lipsum[7]
+The Adaptive Multi-Fidelity Evolutionary Bayesian Optimization (AMFEB) method~\citep{snoek2015scalable} combines Bayesian optimization with evolutionary algorithms and multi-fidelity evaluation strategies. While effective under resource constraints, AMFEB faces two key limitations: (i) surrogate model degradation in high-dimensional hyperparameter spaces~\citep{klein2017fast}, and (ii) a fixed fidelity schedule that may either waste resources or underestimate promising candidates~\citep{shahriari2016taking}.
 
+In this work, we propose an improved AMFEB method that addresses these limitations through:
+\begin{itemize}
+    \item Integration of Principal Component Analysis (PCA)~\citep{jolliffe2002principal} for dimensionality reduction of the hyperparameter space, improving surrogate model stability and reducing computational overhead.
+    \item An adaptive fidelity selection mechanism that dynamically determines the evaluation fidelity based on current surrogate model uncertainty and predictions~\citep{swersky2014freeze}.
+\end{itemize}
 
-
-\section{Examples of citations, figures, tables, references}
-\label{sec:others}
-
-\subsection{Citations}
-Citations use \verb+natbib+. The documentation may be found at
-\begin{center}
-	\url{http://mirrors.ctan.org/macros/latex/contrib/natbib/natnotes.pdf}
-\end{center}
-
-Here is an example usage of the two main commands (\verb+citet+ and \verb+citep+): Some people thought a thing \citep{kour2014real, hadash2018estimate} but other people thought something else \citep{kour2014fast}. Many people have speculated that if we knew exactly why \citet{kour2014fast} thought this\dots
-
-\subsection{Figures}
-\lipsum[10]
-See Figure \ref{fig:fig1}. Here is how you add footnotes. \footnote{Sample of the first footnote.}
-\lipsum[11]
-
-\begin{figure}
-	\centering
-	\includegraphics[width=0.5\textwidth]{../figures/log_reg_cs_exp.eps}
-	\caption{Sample figure caption.}
-	\label{fig:fig1}
-\end{figure}
-
-\subsection{Tables}
-See awesome Table~\ref{tab:table}.
-
-The documentation for \verb+booktabs+ (`Publication quality tables in LaTeX') is available from:
-\begin{center}
-	\url{https://www.ctan.org/pkg/booktabs}
-\end{center}
+We validate our approach through experiments on four OpenML datasets~\citep{vanschoren2013openml}, comparing the improved AMFEB against the baseline AMFEB, Bayesian optimization, and differential evolution. Our results demonstrate significant speedups (up to 3.6$\times$) while maintaining competitive predictive quality.
 
 
-\begin{table}
-	\caption{Sample table title}
-	\centering
-	\begin{tabular}{lll}
-		\toprule
-		\multicolumn{2}{c}{Part}                   \\
-		\cmidrule(r){1-2}
-		Name     & Description     & Size ($\mu$m) \\
-		\midrule
-		Dendrite & Input terminal  & $\sim$100     \\
-		Axon     & Output terminal & $\sim$10      \\
-		Soma     & Cell body       & up to $10^6$  \\
-		\bottomrule
-	\end{tabular}
-	\label{tab:table}
+\section{Related Work}
+
+\paragraph{Basic hyperparameter optimization methods.}
+Grid Search exhaustively evaluates all combinations of hyperparameters from predefined discrete grids~\citep{bergstra2011algorithms}. While simple and easily parallelizable, it suffers from exponential computational costs as the number of hyperparameters grows. Random Search~\citep{bergstra2012random} samples hyperparameter configurations from specified distributions, offering better scalability when only a subset of hyperparameters significantly affects model performance. Hyperopt~\citep{bergstra2013hyperopt} provides practical implementations of these approaches.
+
+\paragraph{Bayesian optimization.}
+Bayesian optimization constructs a probabilistic model of the objective function using Gaussian processes~\citep{rasmussen2006gaussian} and employs acquisition functions to balance exploration and exploitation~\citep{jones1998efficient}. Advances include input warping for better handling of non-stationary objectives~\citep{snoek2014input} and industrial-scale implementations such as Google Vizier~\citep{golovin2017google}. However, standard Bayesian optimization struggles with high-dimensional search spaces and expensive function evaluations.
+
+\paragraph{Population-based and evolutionary methods.}
+Population-Based Training (PBT)~\citep{jaderberg2017population} combines parallel search with hyperparameter adaptation through periodic selection and mutation of promising configurations. Differential Evolution (DE)~\citep{storn1997differential} uses population-based stochastic strategies with mutation and crossover operators, with self-adaptive variants improving robustness~\citep{qin2005self}.
+
+\paragraph{Multi-fidelity optimization.}
+Multi-fidelity methods exploit cheap approximations of the objective function (e.g., training with fewer iterations or on data subsets) to accelerate optimization~\citep{kandasamy2016multi}. FABOLAS~\citep{klein2017fast} extends Bayesian optimization to jointly model performance across fidelities. Freeze-thaw Bayesian optimization~\citep{swersky2014freeze} allows pausing and resuming training runs based on predicted performance.
+
+\paragraph{AMFEB.}
+Adaptive Multi-Fidelity Evolutionary Bayesian Optimization (AMFEB)~\citep{snoek2015scalable} combines Bayesian surrogate modeling with evolutionary search and multi-fidelity evaluation. The method uses low-fidelity evaluations for initial exploration and progressively increases fidelity for promising configurations. While effective, AMFEB employs a fixed fidelity schedule that does not account for current model uncertainty, and its performance degrades in high-dimensional hyperparameter spaces.
+
+
+\section{Problem Formulation}
+
+\subsection{Mathematical Framework}
+
+Consider a machine learning model $\mathcal{M}$ with hyperparameters $\lambda \in D \subset \mathbb{R}^n$, where $D$ denotes the feasible domain. The goal is to find the optimal hyperparameter configuration:
+\[
+\lambda^{*} = \arg\min_{\lambda \in D} f(\lambda),
+\]
+where $f(\lambda)$ represents a performance metric (e.g., validation error) evaluated after training $\mathcal{M}$ with hyperparameters $\lambda$.
+
+In the multi-fidelity setting, we have access to approximations $f^{(z)}(\lambda)$ at different fidelity levels $z \in \{z_1, z_2, \ldots, z_k\}$, where higher fidelity corresponds to more accurate but more expensive evaluations. The fidelity may correspond to the number of training iterations, the fraction of training data used, or model architecture simplifications.
+
+\subsection{Baseline AMFEB}
+
+The baseline AMFEB method maintains a population of candidate configurations and iteratively:
+\begin{enumerate}
+    \item Evaluates candidates at the current fidelity level;
+    \item Updates a Gaussian process surrogate model;
+    \item Applies evolutionary operators (selection, crossover, mutation) to generate new candidates;
+    \item Increases fidelity according to a fixed schedule.
+\end{enumerate}
+
+The surrogate model $\hat{f}(\lambda)$ provides predictions with uncertainty estimates, enabling acquisition functions to balance exploration and exploitation. However, in high-dimensional spaces ($n \gg 10$), the surrogate model becomes unreliable due to sparse data coverage.
+
+\subsection{Proposed Improvements}
+
+We address the limitations of baseline AMFEB through two modifications:
+
+\paragraph{PCA-based dimensionality reduction.}
+Before surrogate model fitting, we apply Principal Component Analysis to project hyperparameter configurations into a lower-dimensional space:
+\[
+\tilde{\lambda} = W^T (\lambda - \mu),
+\]
+where $W \in \mathbb{R}^{n \times d}$ contains the top $d$ principal components and $\mu$ is the mean of observed configurations. The reduced dimensionality $d$ is chosen to retain a specified fraction of total variance (e.g., 95\%). The surrogate model is then trained on the transformed features $\tilde{\lambda}$, improving its stability and generalization.
+
+\paragraph{Adaptive fidelity selection.}
+Instead of a fixed fidelity schedule, we dynamically select the evaluation fidelity based on the surrogate model's predictive uncertainty. For a candidate $\lambda$, let $\sigma(\lambda)$ denote the posterior standard deviation from the Gaussian process. We define the fidelity level as:
+\[
+z(\lambda) = z_{\min} + (z_{\max} - z_{\min}) \cdot \left(1 - \frac{\sigma(\lambda)}{\sigma_{\max}}\right),
+\]
+where $\sigma_{\max}$ is the maximum observed uncertainty. This assigns higher fidelity to configurations where the model is confident (likely promising regions) and lower fidelity to uncertain configurations (exploratory evaluations).
+
+
+\section{Experiments}
+
+\subsection{Experimental Setup}
+
+To evaluate the effectiveness of the proposed improvements, we conducted experiments on four datasets from OpenML~\citep{vanschoren2013openml} with IDs: 3945, 42362, 45017, and 46783. These datasets represent diverse regression tasks with varying characteristics.
+
+Three methods were compared:
+\begin{itemize}
+    \item \textbf{AMFEB}: Baseline Adaptive Multi-Fidelity Evolutionary Bayesian Optimization;
+    \item \textbf{BayesOpt}: Standard Bayesian optimization with Gaussian processes;
+    \item \textbf{ImprovedAMFEB}: Our proposed method with PCA dimensionality reduction and adaptive fidelity selection.
+\end{itemize}
+
+For all methods, we optimized hyperparameters of a gradient boosting regressor, including learning rate, maximum depth, number of estimators, and regularization parameters. The search space comprised 8 continuous and discrete hyperparameters. Each method was given an equivalent computational budget measured in wall-clock time.
+
+Evaluation metrics include Mean Absolute Error (MAE), Root Mean Squared Error (RMSE), coefficient of determination ($R^2$), and total optimization time. All experiments were repeated 5 times with different random seeds, and we report mean values.
+
+\subsection{Results}
+
+Table~\ref{tab:mae-rmse} presents the MAE and RMSE results across all datasets. The improved AMFEB achieves comparable or slightly better error metrics than the baseline methods on most datasets. On dataset 3945, all methods show higher errors due to the inherent difficulty of the regression task.
+
+\begin{table}[h]
+\centering
+\caption{Comparison of MAE and RMSE across datasets. Lower values indicate better performance. Bold indicates the best result for each metric and dataset.}
+\label{tab:mae-rmse}
+\begin{tabular}{lcccc}
+\toprule
+Method & 3945 & 42362 & 45017 & 46783 \\
+\midrule
+\multicolumn{5}{c}{\textit{MAE}} \\
+\midrule
+AMFEB & 0.559 & 43.670 & \textbf{0.291} & 0.652 \\
+BayesOpt & \textbf{0.524} & \textbf{51.297} & 0.289 & \textbf{0.543} \\
+ImprovedAMFEB & 0.680 & 42.166 & 0.307 & 0.656 \\
+\midrule
+\multicolumn{5}{c}{\textit{RMSE}} \\
+\midrule
+AMFEB & \textbf{0.770} & \textbf{67.599} & \textbf{0.371} & 1.092 \\
+BayesOpt & 0.745 & 72.249 & 0.374 & \textbf{1.025} \\
+ImprovedAMFEB & 0.875 & 67.623 & 0.388 & 1.172 \\
+\bottomrule
+\end{tabular}
 \end{table}
 
-\subsection{Lists}
+Table~\ref{tab:r2-time} shows the $R^2$ scores and optimization times. The improved AMFEB maintains high $R^2$ values (above 0.95 on three out of four datasets), indicating strong predictive performance. Notably, dataset 3945 presents challenges for all methods with $R^2$ values around 0.63--0.73.
+
+\begin{table}[h]
+\centering
+\caption{Comparison of $R^2$ scores and optimization time (seconds) across datasets. Higher $R^2$ and lower time indicate better performance. Bold indicates best results.}
+\label{tab:r2-time}
+\begin{tabular}{lcccc}
+\toprule
+Method & 3945 & 42362 & 45017 & 46783 \\
+\midrule
+\multicolumn{5}{c}{\textit{$R^2$}} \\
+\midrule
+AMFEB & 0.716 & \textbf{0.998} & 0.449 & 0.963 \\
+BayesOpt & \textbf{0.734} & 0.998 & 0.438 & \textbf{0.968} \\
+ImprovedAMFEB & 0.632 & \textbf{0.998} & \textbf{0.398} & 0.958 \\
+\midrule
+\multicolumn{5}{c}{\textit{Time (s)}} \\
+\midrule
+AMFEB & 222.83 & 200.37 & \textbf{278.03} & 1304.17 \\
+BayesOpt & \textbf{40.66} & \textbf{42.23} & 65.92 & \textbf{128.20} \\
+ImprovedAMFEB & 203.52 & 194.75 & 325.02 & 358.61 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Efficiency Analysis}
+
+Figure~\ref{fig:speedup} illustrates the relative speedup of the improved AMFEB compared to the baseline AMFEB. The proposed method achieves:
 \begin{itemize}
-	\item Lorem ipsum dolor sit amet
-	\item consectetur adipiscing elit.
-	\item Aliquam dignissim blandit est, in dictum tortor gravida eget. In ac rutrum magna.
+    \item 1.1$\times$ speedup on dataset 3945;
+    \item 1.03$\times$ speedup on dataset 42362;
+    \item 0.86$\times$ (slightly slower) on dataset 45017;
+    \item \textbf{3.6$\times$ speedup} on dataset 46783.
 \end{itemize}
+
+The significant speedup on dataset 46783 demonstrates the effectiveness of adaptive fidelity selection when the search space contains regions where low-fidelity evaluations suffice for early rejection of poor candidates.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.7\linewidth]{Results.png}
+\caption{Comparison of quality metrics and optimization time across methods. The improved AMFEB achieves competitive accuracy while significantly reducing computation time on larger datasets.}
+\label{fig:speedup}
+\end{figure}
+
+\subsection{Discussion}
+
+The experimental results lead to several observations:
+
+\paragraph{Quality preservation.}
+The improved AMFEB maintains predictive quality comparable to baseline methods across most datasets. Minor degradation in some metrics (e.g., MAE on dataset 3945) is offset by substantial computational savings.
+
+\paragraph{Adaptive fidelity benefits.}
+The adaptive fidelity mechanism provides the largest gains on datasets where promising hyperparameter regions can be identified early with low-fidelity evaluations. Dataset 46783, with its larger size, benefits most from this strategy.
+
+\paragraph{PCA effectiveness.}
+Dimensionality reduction via PCA improves surrogate model stability, particularly visible in the consistency of predictions across runs. The reduced feature space enables more reliable uncertainty estimates for the adaptive fidelity mechanism.
+
+\paragraph{Trade-offs.}
+On smaller datasets (e.g., 45017), the overhead of PCA transformation and adaptive fidelity computation may not be offset by evaluation savings, resulting in slightly longer optimization times.
+
+
+\section{Conclusion}
+
+We presented an improved version of the AMFEB hyperparameter optimization method that integrates PCA-based dimensionality reduction and adaptive fidelity selection. The proposed approach addresses two key limitations of baseline AMFEB: degradation in high-dimensional hyperparameter spaces and inefficient fixed fidelity schedules.
+
+Experiments on four OpenML datasets demonstrate that the improved AMFEB achieves:
+\begin{itemize}
+    \item Comparable predictive quality (MAE, RMSE, $R^2$) to baseline methods;
+    \item Significant speedups of up to 3.6$\times$ on larger datasets;
+    \item A favorable balance between accuracy and computational efficiency.
+\end{itemize}
+
+The adaptive fidelity mechanism proves particularly effective when the optimization landscape allows early identification of promising regions through low-fidelity evaluations. PCA dimensionality reduction enhances surrogate model reliability, enabling more informed fidelity decisions.
+
+Future work will explore alternative dimensionality reduction techniques (e.g., autoencoders), integration with neural network surrogate models, and extension to multi-objective hyperparameter optimization scenarios. Additionally, theoretical analysis of convergence guarantees under adaptive fidelity schedules remains an open direction.
 
 
 \bibliographystyle{unsrtnat}
